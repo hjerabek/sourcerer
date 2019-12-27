@@ -30,3 +30,20 @@ If you want to process multiple files serially, add multiple paths as arguments:
 ```
 ./run -cfg=cfg.js test1.js test2.js test3.js
 ```
+
+## Code samples
+```
+// load remote resouce
+console.log(typeof(Promise));
+require("https://cdn.jsdelivr.net/npm/es6-promise/dist/es6-promise.auto.min.js");
+console.log(typeof(Promise));
+
+// load local TypeScript resource
+var ABC=require("module/ABC.ts")
+console.log(ABC.doSomething());
+
+// load local resource with a custom loader "init" (set configuration "names" to allow non-standard loading functions)
+init("mylib")
+console.log(MYLIB.get("xyz"));
+
+```
