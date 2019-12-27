@@ -1,0 +1,8 @@
+#!/bin/bash
+args=""
+for arg in "$@"; do args="$args,\"$arg\""; done
+args="[${args:1}]"
+java -Xms16m -Xmx128m -Dargs="$args" -Dvertx.options.blockedThreadCheckInterval=16000 -Dvertx.options.maxEventLoopExecuteTime=600000000000 -jar sourcerer.jar
+exit
+jdk/bin/java -Xms8m -Xmx64m -jar sourcerer.jar -Dcfg=cfg.js -Dsrc=test.js -Dvertx.options.blockedThreadCheckInterval=16000 -Dvertx.options.maxEventLoopExecuteTime=600000000000
+exit

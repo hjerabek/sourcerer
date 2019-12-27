@@ -1,0 +1,11 @@
+.*
+!.gitignore
+jdk
+mvn
+data
+dump
+docs
+*.pdf
+*.log
+*.tmp
+*.d.ts
