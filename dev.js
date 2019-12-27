@@ -6,7 +6,7 @@
     return;
 } catch(err) {}*/
 
-// VERSION 0.2.4
+// VERSION 0.3.1
 var createSourcerer=(function(){
     var System=java.lang.System;
 	var clog=function(x){console.log(x);return x;};
