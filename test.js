@@ -1,9 +1,9 @@
 console.log("STARTING test.js");
 console.log(typeof(Promise));
-//xrequire("https://cdn.jsdelivr.net/npm/es6-promise/dist/es6-promise.auto.min.js");
+require("https://cdn.jsdelivr.net/npm/es6-promise/dist/es6-promise.auto.min.js");
 console.log(typeof(Promise));
-//Promise.resolve("PROMISE").then(console.log);
-//rxequire("https://www.foo.bar/abc/def.js");
+Promise.resolve("PROMISE").then(console.log);
+require("https://www.foo.bar/abc/def.js");
 var x=source("test1");
 console.log("value of test1 = "+JSON.stringify(x || null));
 console.log("value of test2 = "+JSON.stringify(require("test2.ts")));

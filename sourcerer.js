@@ -6,7 +6,7 @@ try {
     return;
 } catch(err) {}
 
-// VERSION 0.2.4
+// VERSION 0.3.5
 var createSourcerer=(function(){
     var System=java.lang.System;
 	var clog=function(x){console.log(x);return x;};
@@ -189,11 +189,15 @@ var createSourcerer=(function(){
         }
 
         return function(path){
+            var s,o;
             var nt0=nanonow();
-            var src=getFile(path);
-            if (!src) throw "errMissingInitialSource";
-
-            var s,o,ref2src,ref,refs,srcs,src1,mtch,hash,hash1,hash2hash2hasref,warnings;
+            var src=getReferenceContent(path);
+            //if (!src) throw "errMissingInitialSource";
+            if (!src) {
+                clog("ERROR: cannot find the source '"+path+"'");
+                return "";
+            }
+            var ref2src,ref,refs,srcs,src1,mtch,hash,hash1,hash2hash2hasref,warnings;
             ref2src={};
             ref2src[path]=src;
             refs=[path];
@@ -292,10 +296,34 @@ var createSourcerer=(function(){
     }
 })();
 
+// process arguments
+var cfg=null,pathsIn=[],pathOut="",doRun=false,doPrint=false;
+var i,s,a,k,v,args=JSON.parse(java.lang.System.getProperty("args") || "[]");
+var rx=/\s*-([^=]+)=([\s\S]+)\s*$/i;
+for (i=0;i<args.length;i++) {
+    s=args[i];
+    if (a=s.match(rx)) {
+        k=a[1];v=a[2];
+        if (k=="cfg") cfg=v;
+        else if (k=="out") pathOut=v;
+        else if (k=="tsc" && v=="false") console.log("WARNING: this environment does not provide a typescript compiler (tsc). do not reference non-javascript-compatible typescript references if you want your output to be valid javascript.");
+    } else if (s=="-run") {
+        doRun=true;
+    } else if (s=="-print") {
+        doPrint=true;
+    } else {
+        pathsIn.push(s);
+    }
+
+}
+
 // do the work
-var sysprop=java.lang.System.getProperty;
-var toSource=createSourcerer(sysprop("cfg"));
-(new Function(toSource(sysprop("src")))());
+var toSource=createSourcerer(cfg);
+for (i=0;i<pathsIn.length;i++) {
+    s=toSource(pathsIn[i]);
+    if (doPrint) console.log(s)
+    if (doRun) (new Function(s)());
+}
 
 // exit
 vertx.close();
