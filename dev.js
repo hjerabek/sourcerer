@@ -6,7 +6,7 @@
     return;
 } catch(err) {}*/
 
-// VERSION 0.3.1
+// VERSION 0.3.2
 var createSourcerer=(function(){
     var System=java.lang.System;
 	var clog=function(x){console.log(x);return x;};
@@ -306,6 +306,7 @@ for (i=0;i<args.length;i++) {
         k=a[1];v=a[2];
         if (k=="cfg") cfg=v;
         else if (k=="out") pathOut=v;
+        else if (k=="tsc" && v=="false") console.log("WARNING: this environment does not provide a typescript compiler (tsc). do not reference non-javascript-compatible typescript references if you want your output to be valid javascript.");
     } else if (s=="-run") {
         doRun=true;
     } else if (s=="-print") {
