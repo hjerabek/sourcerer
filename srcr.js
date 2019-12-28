@@ -6,6 +6,8 @@ try {
     return;
 } catch(err) {}
 
+// VERSION 0.5.2
+
 var System=java.lang.System;
 var sysprop=System.getProperty;
 var clog=function(x){console.log(x);return x;};
@@ -113,12 +115,12 @@ var getHttp=function(s){
     }
 }
 
-var x=new File(".sourcerer/jscache");
+var x=new File(".srcr/jscache");
 if (!x.isDirectory()) x.mkdirs();
 
 var tsc=function(ts,target){
     var s,k;
-    k=".sourcerer/jscache/"+toMd5(ts);
+    k=".srcr/jscache/"+toMd5(ts);
     if (s=getFile(k+".js")) return s;
     setFile(k+".ts",ts);
     try {
@@ -146,8 +148,7 @@ var toMd5=DigestUtils.md5Hex
 var toSha256=DigestUtils.sha256Hex;
 var toSha512=DigestUtils.sha512Hex;
 
-// VERSION 0.5.1
-var createSourcerer=(function(){
+var createSrcr=(function(){
     // ...
     return function(cfg){
         var i,s,a,o,x;
@@ -330,9 +331,15 @@ var createSourcerer=(function(){
     }
 })();
 
+// exit if this script is used like a module
+if (!sysprop("args_srcr")) {
+    if (typeof(module)!=="undefined") module.exports=createSrcr;
+    return createSrcr;
+}
+
 // process arguments
 var cfg=null,pathsIn=[],pathOut="",doRun=false,doPrint=false;
-var i,s,a,k,v,args=JSON.parse(java.lang.System.getProperty("args") || "[]");
+var i,s,a,k,v,args=JSON.parse(sysprop("args_srcr") || "[]");
 var rx=/\s*-([^=]+)=([\s\S]+)\s*$/i;
 for (i=0;i<args.length;i++) {
     s=args[i];
@@ -352,9 +359,9 @@ for (i=0;i<args.length;i++) {
 }
 
 // do the work
-var toSource=createSourcerer(cfg);
+var toSrc=createSrcr(cfg);
 for (i=0;i<pathsIn.length;i++) {
-    s=toSource(pathsIn[i]);
+    s=toSrc(pathsIn[i]);
     if (doPrint) console.log(s)
     if (doRun) (new Function(s)());
 }
