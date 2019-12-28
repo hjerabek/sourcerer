@@ -6,7 +6,7 @@ try {
     return;
 } catch(err) {}
 
-// VERSION 0.5.2
+// VERSION 0.6.0
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
@@ -71,7 +71,7 @@ var getFile=function(path){
         var file=new File(path);
         if (!file.isFile()) return "";
         var is=new FileInputStream(file);
-        var s=new Scanner(is).useDelimiter("\\A").next();
+        var s=new Scanner(is,"UTF-8").useDelimiter("\\A").next();
         is.close();
         return s;
         //return FS.readFileBlocking(path).toString("UTF-8");
@@ -93,6 +93,22 @@ var removeFile=function(path){
     return "";
 };
 
+var SystemClassLoader=java.lang.ClassLoader.getSystemClassLoader();
+var hasResource=function(path){
+    return (SystemClassLoader.getResource(path)!=null)
+}
+var getResource=function(path){
+    try {
+        var is=SystemClassLoader.getResourceAsStream(path);
+        if (!is) return "";
+        var s=new Scanner(is,"UTF-8").useDelimiter("\\A").next();
+        is.close();
+        return s;
+    } catch(err1) {
+        try { if (is) is.close(); } catch(err2) {}
+    }
+}
+
 var URL=java.net.URL;
 var getHttp=function(s){
     try {
@@ -103,7 +119,7 @@ var getHttp=function(s){
         con.setReadTimeout(16000);
         //con.setFollowRedirects(true);
         var is=con.getInputStream();
-        var s=new Scanner(is).useDelimiter("\\A").next();
+        var s=new Scanner(is,"UTF-8").useDelimiter("\\A").next();
         var status=con.getResponseCode();
         is.close();
         con.disconnect();
@@ -171,6 +187,7 @@ var createSrcr=(function(){
             for (i=0;i<dirs.length;i++) {
                 s=dirs[i]+path;
                 if (hasFile(s)) return getFile(s);
+                if (hasResource(s)) return getResource(s);
                 if (rxTestScriptPath.test(s)) {
                     s1=s.substring(s.length-3);
                     if (s1==".ts") {
@@ -184,6 +201,8 @@ var createSrcr=(function(){
                 } else {
                     if (hasFile(s+".js")) return getFile(s+".js");
                     if (hasFile(s+".ts")) return getFile(s+".ts");
+                    if (hasResource(s+".js")) return getResource(s+".js");
+                    if (hasResource(s+".ts")) return getResource(s+".ts");
                 }
             }
             return "";
@@ -305,7 +324,7 @@ var createSrcr=(function(){
             clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js'");
 
             if (javarefs.length) {
-                var pom=getFile("pom.xml");
+                var pom=getResource("pom.xml");
                 s="";
                 for (i=0;i<javarefs.length;i++) {
                     a=javarefs[i].split("/");
