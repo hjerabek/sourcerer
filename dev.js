@@ -2,11 +2,11 @@
 /*try {
     var js=vertx.fileSystem().readFileBlocking("dev.js").toString("UTF-8");
     (new Function(js))();
-    vertx.close();
+    //vertx.close();
     return;
 } catch(err) {}*/
 
-// VERSION 0.6.1
+// VERSION 0.6.3
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
@@ -212,6 +212,9 @@ var createSrcr=(function(){
             return new File(path.replace(rxTestFileUri,"")).getAbsolutePath();
         }
 
+        var rxIgnoredReference=cfg.rxIgnoredReference;
+        if (typeof(rxIgnoredReference)==="undefined") rxIgnoredReference=/^vertx-(web|lang)-js/i;
+
         return function(path,opts){
             if (!opts) opts={};
             var s,o;
@@ -236,12 +239,15 @@ var createSrcr=(function(){
                 hash1=toMd5(src1);
                 while (mtch=rxMatchValueMarker.exec(src1)) {
                     ref=mtch[3];
+                    if (rxIgnoredReference && rxIgnoredReference.test(ref)) continue;
                     if (rxTestJavaReference.test(ref)) {
                         javarefs.push(ref);
                         ref2src[ref]="return;";
                         continue;
                     }
                     s=ref2src[ref];
+                    /*
+                    // TODO: re-activate when vertx' script recompilation bug is fixed
                     // TODO: the hashes should be cached in order to not have hash them over and over again
                     hash=toMd5(s);
                     if ((o=hash2hash2hasref[hash]) && o[hash1]) {
@@ -253,6 +259,7 @@ var createSrcr=(function(){
                     o=hash2hash2hasref[hash1];
                     if (!o) hash2hash2hasref[hash1]=o={};
                     o[hash]=true;
+                    */
                     if (s) continue;
                     s=getReferenceContent(ref);
                     ref2src[ref]=(s || "return;");
@@ -289,6 +296,7 @@ var createSrcr=(function(){
                         '   var f_'+hash+'=global["f_'+hash+'"]=function(){',
                         '       var hash="'+hash+'"; ',
                         '       if (hash in __hash2value) return __hash2value[hash];',
+                        '       __hash2value[hash]=null;',
                         '       var exports={},module={exports:exports};',
                         '       var value=(function(module,exports){',
                         '       // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
@@ -317,7 +325,9 @@ var createSrcr=(function(){
                 ');'
             );
             src1=srcs.join("\n").replace(rxMatchValueMarker,function(){
-                return arguments[1]+"f_"+ref2hash[arguments[3]]+"()";
+                var s=ref2hash[arguments[3]];
+                return (s ? arguments[1]+"f_"+s+"()" : arguments[0]);
+                //return arguments[1]+"f_"+ref2hash[arguments[3]]+"()";
             })
             if (opts.tsc) {
                 src1=(tsc(src1,cfg.tsctarget) || src1);
@@ -326,9 +336,9 @@ var createSrcr=(function(){
             }
             var pathbase=path.replace(/\.(js|ts)/i,"");
             setFile(pathbase+"_srcr.js",src1);
-            clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js'");
+            clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js' ["+(src1.length*1e-3).toFixed(0)+"kb].");
 
-            if (javarefs.length && opts.jar) {
+            if (javarefs.length || opts.jar) {
                 var pom=getResource("pom.xml");
                 s="";
                 for (i=0;i<javarefs.length;i++) {
@@ -391,5 +401,7 @@ for (i=0;i<pathsIn.length;i++) {
 }
 
 // exit
-vertx.close();
-return;
+if (!opts.run) {
+    vertx.close();
+    return;
+}

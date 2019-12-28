@@ -1,5 +1,7 @@
 #!/bin/bash
 
+dirSrcr="${BASH_SOURCE[0]}"
+
 if [[ "$1" == "build" ]]; then
     mvn package clean
     exit
@@ -15,7 +17,7 @@ for arg in "$@"; do args="$args,\"$arg\""; done
 if [[ ! -z "$(command -v mvn)" ]]; then args="$args,\"-mvn\""; fi
 if [[ ! -z "$(command -v tsc)" ]]; then args="$args,\"-tsc\""; fi
 args="[${args:1}]"
-java -Xms16m -Xmx128m -Dargs_srcr="$args" -Dvertx.options.blockedThreadCheckInterval=16000 -Dvertx.options.maxEventLoopExecuteTime=600000000000 -jar srcr.jar
+java -Xms16m -Xmx128m -Dargs_srcr="$args" -Dvertx.options.blockedThreadCheckInterval=16000 -Dvertx.options.maxEventLoopExecuteTime=600000000000 -jar "$dirSrcr.jar"
 exit
 #jdk/bin/java -Xms8m -Xmx64m -jar srcr.jar -Dcfg=cfg.js -Dsrc=test.js -Dvertx.options.blockedThreadCheckInterval=16000 -Dvertx.options.maxEventLoopExecuteTime=600000000000
 #exit

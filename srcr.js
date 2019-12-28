@@ -2,11 +2,11 @@
 try {
     var js=vertx.fileSystem().readFileBlocking("dev.js").toString("UTF-8");
     (new Function(js))();
-    vertx.close();
+    //vertx.close();
     return;
 } catch(err) {}
 
-// VERSION 0.6.0
+// VERSION 0.6.3
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
@@ -212,7 +212,11 @@ var createSrcr=(function(){
             return new File(path.replace(rxTestFileUri,"")).getAbsolutePath();
         }
 
-        return function(path){
+        var rxIgnoredReference=cfg.rxIgnoredReference;
+        if (typeof(rxIgnoredReference)==="undefined") rxIgnoredReference=/^vertx-(web|lang)-js/i;
+
+        return function(path,opts){
+            if (!opts) opts={};
             var s,o;
             var nt0=nanonow();
             var src=getReferenceContent(path);
@@ -235,12 +239,15 @@ var createSrcr=(function(){
                 hash1=toMd5(src1);
                 while (mtch=rxMatchValueMarker.exec(src1)) {
                     ref=mtch[3];
+                    if (rxIgnoredReference && rxIgnoredReference.test(ref)) continue;
                     if (rxTestJavaReference.test(ref)) {
                         javarefs.push(ref);
                         ref2src[ref]="return;";
                         continue;
                     }
                     s=ref2src[ref];
+                    /*
+                    // TODO: re-activate when vertx' script recompilation bug is fixed
                     // TODO: the hashes should be cached in order to not have hash them over and over again
                     hash=toMd5(s);
                     if ((o=hash2hash2hasref[hash]) && o[hash1]) {
@@ -252,6 +259,7 @@ var createSrcr=(function(){
                     o=hash2hash2hasref[hash1];
                     if (!o) hash2hash2hasref[hash1]=o={};
                     o[hash]=true;
+                    */
                     if (s) continue;
                     s=getReferenceContent(ref);
                     ref2src[ref]=(s || "return;");
@@ -288,6 +296,7 @@ var createSrcr=(function(){
                         '   var f_'+hash+'=global["f_'+hash+'"]=function(){',
                         '       var hash="'+hash+'"; ',
                         '       if (hash in __hash2value) return __hash2value[hash];',
+                        '       __hash2value[hash]=null;',
                         '       var exports={},module={exports:exports};',
                         '       var value=(function(module,exports){',
                         '       // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
@@ -316,14 +325,20 @@ var createSrcr=(function(){
                 ');'
             );
             src1=srcs.join("\n").replace(rxMatchValueMarker,function(){
-                return arguments[1]+"f_"+ref2hash[arguments[3]]+"()";
+                var s=ref2hash[arguments[3]];
+                return (s ? arguments[1]+"f_"+s+"()" : arguments[0]);
+                //return arguments[1]+"f_"+ref2hash[arguments[3]]+"()";
             })
-            src1=(tsc(src1,cfg.tsctarget) || src1);
+            if (opts.tsc) {
+                src1=(tsc(src1,cfg.tsctarget) || src1);
+            } else {
+                clog("WARNING: this environment does not provide a typescript compiler (tsc). do not reference non-javascript-compatible typescript references if you want your output to be valid javascript.");
+            }
             var pathbase=path.replace(/\.(js|ts)/i,"");
             setFile(pathbase+"_srcr.js",src1);
-            clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js'");
+            clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js' ["+(src1.length*1e-3).toFixed(0)+"kb].");
 
-            if (javarefs.length) {
+            if (javarefs.length || opts.jar) {
                 var pom=getResource("pom.xml");
                 s="";
                 for (i=0;i<javarefs.length;i++) {
@@ -340,8 +355,12 @@ var createSrcr=(function(){
                 pom=pom.replace(/pom.xml/g,pathbase+"_srcr_pom.xml");
                 setFile(pathbase+"_srcr_pom.xml",pom);
                 clog("INFO: the pom file with all maven dependencies has been written to '"+pathbase+"_srcr_pom.xml'");
-                osexec("mvn package clean -f "+pathbase+"_srcr_pom.xml");
-                clog("INFO: the standalone application jar for running the script has been written to '"+pathbase+"_srcr.jar'. the application can be started with the command 'java -jar "+pathbase+"_srcr.jar'.");
+                if (opts.mvn) {
+                    osexec("mvn package clean -f "+pathbase+"_srcr_pom.xml");
+                    clog("INFO: the standalone application jar for running the script has been written to '"+pathbase+"_srcr.jar'. the application can be started with the command 'java -jar "+pathbase+"_srcr.jar'.");
+                } else {
+                    clog("WARNING: cannot build '"+pathbase+"_srcr.jar' from '"+pathbase+"_srcr_pom.xml' because this environment does not seem to provide maven (mvn).")
+                }
             }
 
             clog("total execution time = "+((nanonow()-nt0)*1e-6).toFixed(3)+"ms");
@@ -357,34 +376,32 @@ if (!sysprop("args_srcr")) {
 }
 
 // process arguments
-var cfg=null,pathsIn=[],pathOut="",doRun=false,doPrint=false;
-var i,s,a,k,v,args=JSON.parse(sysprop("args_srcr") || "[]");
+var cfg=null,pathsIn=[],opts={};
+var i,s,a,k,v,args=fromFjson(sysprop("args_srcr") || "[]");
 var rx=/\s*-([^=]+)=([\s\S]+)\s*$/i;
 for (i=0;i<args.length;i++) {
     s=args[i];
     if (a=s.match(rx)) {
         k=a[1];v=a[2];
         if (k=="cfg") cfg=v;
-        else if (k=="out") pathOut=v;
-        else if (k=="tsc" && v=="false") console.log("WARNING: this environment does not provide a typescript compiler (tsc). do not reference non-javascript-compatible typescript references if you want your output to be valid javascript.");
-    } else if (s=="-run") {
-        doRun=true;
-    } else if (s=="-print") {
-        doPrint=true;
+        else if (k=="out") opts.outpath=v;
+    } else if (s.charAt(0)=="-") {
+        opts[s.substring(1)]=true;
     } else {
         pathsIn.push(s);
     }
-
 }
 
 // do the work
 var toSrc=createSrcr(cfg);
 for (i=0;i<pathsIn.length;i++) {
-    s=toSrc(pathsIn[i]);
-    if (doPrint) console.log(s)
-    if (doRun) (new Function(s)());
+    s=toSrc(pathsIn[i],opts);
+    if (opts.print) clog(s);
+    if (opts.run) (new Function(s)());
 }
 
 // exit
-vertx.close();
-return;
+if (!opts.run) {
+    vertx.close();
+    return;
+}
