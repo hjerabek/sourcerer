@@ -6,6 +6,6 @@ return {
     names:["require","source"],
     // the target ECMAScript specification, i.e. the option "target" for the typescript compiler (default="ES5")
     tsctarget:"ES5",
-    // a regular expression matching all references that should be kept as they are (default=/^vertx-(web|lang)-js/i)
-    rxIgnoredReference:/^vertx-(web|lang)-js/i
+    // a regular expression matching all references that should be left unchanged (default=/^vertx-[a-z0-9-]+js\//i)
+    rxIgnoredReference:/^vertx-[a-z0-9-]+js\//i
 }

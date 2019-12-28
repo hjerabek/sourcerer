@@ -2,14 +2,20 @@
 /*try {
     var js=vertx.fileSystem().readFileBlocking("dev.js").toString("UTF-8");
     (new Function(js))();
-    //vertx.close();
     return;
-} catch(err) {}*/
+} catch(err) {
+    if (js) {
+        console.log(err.toString());
+        return;
+    }
+}*/
 
-// VERSION 0.6.3
+// VERSION 0.6.5
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
+var hndlrs0,lgr0=java.util.logging.Logger.getLogger("");
+if (lgr0 && (hndlrs0=lgr0.getHandlers()).length) lgr0.removeHandler(hndlrs0[0]);
 var clog=function(x){console.log(x);return x;};
 var clogO=function(x){console.log(toJson(x,null,4));return x;};
 var now=Date.now;
@@ -213,7 +219,7 @@ var createSrcr=(function(){
         }
 
         var rxIgnoredReference=cfg.rxIgnoredReference;
-        if (typeof(rxIgnoredReference)==="undefined") rxIgnoredReference=/^vertx-(web|lang)-js/i;
+        if (typeof(rxIgnoredReference)==="undefined") rxIgnoredReference=/^vertx-[a-z0-9-]+js\//i;
 
         return function(path,opts){
             if (!opts) opts={};
@@ -401,7 +407,5 @@ for (i=0;i<pathsIn.length;i++) {
 }
 
 // exit
-if (!opts.run) {
-    vertx.close();
-    return;
-}
+if (!opts.run) vertx.close();
+return createSrcr;
