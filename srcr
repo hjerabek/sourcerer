@@ -12,7 +12,8 @@ fi
 
 args=""
 for arg in "$@"; do args="$args,\"$arg\""; done
-if [[ -z "$(command -v tsc)" ]]; then args="$args,\"-tsc=false\""; fi
+if [[ ! -z "$(command -v mvn)" ]]; then args="$args,\"-mvn\""; fi
+if [[ ! -z "$(command -v tsc)" ]]; then args="$args,\"-tsc\""; fi
 args="[${args:1}]"
 java -Xms16m -Xmx128m -Dargs_srcr="$args" -Dvertx.options.blockedThreadCheckInterval=16000 -Dvertx.options.maxEventLoopExecuteTime=600000000000 -jar srcr.jar
 exit

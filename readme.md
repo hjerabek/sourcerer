@@ -30,7 +30,7 @@ In this example, the module provides a hash function based on the functionality 
 To start, open a terminal and run the srcr:
 
 ```bash
-./srcr example_app.ts
+./srcr example_app.ts -jar
 ```
 
 He will produce the following output files:  
@@ -50,6 +50,11 @@ java -jar example_app_srcr.jar
 By default, you run the srcr just with a single file:
 ```bash
 ./srcr script.js
+```
+
+If you want to create a standalone fatjar, add the parameter "**-jar**":
+```bash
+./srcr script.js -jar
 ```
 
 If you want to use a custom, non-default configuration file, use the "**-cfg**" parameter:

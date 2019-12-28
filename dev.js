@@ -6,7 +6,7 @@
     return;
 } catch(err) {}*/
 
-// VERSION 0.6.0
+// VERSION 0.6.1
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
@@ -212,7 +212,8 @@ var createSrcr=(function(){
             return new File(path.replace(rxTestFileUri,"")).getAbsolutePath();
         }
 
-        return function(path){
+        return function(path,opts){
+            if (!opts) opts={};
             var s,o;
             var nt0=nanonow();
             var src=getReferenceContent(path);
@@ -318,12 +319,16 @@ var createSrcr=(function(){
             src1=srcs.join("\n").replace(rxMatchValueMarker,function(){
                 return arguments[1]+"f_"+ref2hash[arguments[3]]+"()";
             })
-            src1=(tsc(src1,cfg.tsctarget) || src1);
+            if (opts.tsc) {
+                src1=(tsc(src1,cfg.tsctarget) || src1);
+            } else {
+                clog("WARNING: this environment does not provide a typescript compiler (tsc). do not reference non-javascript-compatible typescript references if you want your output to be valid javascript.");
+            }
             var pathbase=path.replace(/\.(js|ts)/i,"");
             setFile(pathbase+"_srcr.js",src1);
             clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js'");
 
-            if (javarefs.length) {
+            if (javarefs.length && opts.jar) {
                 var pom=getResource("pom.xml");
                 s="";
                 for (i=0;i<javarefs.length;i++) {
@@ -340,8 +345,12 @@ var createSrcr=(function(){
                 pom=pom.replace(/pom.xml/g,pathbase+"_srcr_pom.xml");
                 setFile(pathbase+"_srcr_pom.xml",pom);
                 clog("INFO: the pom file with all maven dependencies has been written to '"+pathbase+"_srcr_pom.xml'");
-                osexec("mvn package clean -f "+pathbase+"_srcr_pom.xml");
-                clog("INFO: the standalone application jar for running the script has been written to '"+pathbase+"_srcr.jar'. the application can be started with the command 'java -jar "+pathbase+"_srcr.jar'.");
+                if (opts.mvn) {
+                    osexec("mvn package clean -f "+pathbase+"_srcr_pom.xml");
+                    clog("INFO: the standalone application jar for running the script has been written to '"+pathbase+"_srcr.jar'. the application can be started with the command 'java -jar "+pathbase+"_srcr.jar'.");
+                } else {
+                    clog("WARNING: cannot build '"+pathbase+"_srcr.jar' from '"+pathbase+"_srcr_pom.xml' because this environment does not seem to provide maven (mvn).")
+                }
             }
 
             clog("total execution time = "+((nanonow()-nt0)*1e-6).toFixed(3)+"ms");
@@ -357,32 +366,28 @@ if (!sysprop("args_srcr")) {
 }
 
 // process arguments
-var cfg=null,pathsIn=[],pathOut="",doRun=false,doPrint=false;
-var i,s,a,k,v,args=JSON.parse(sysprop("args_srcr") || "[]");
+var cfg=null,pathsIn=[],opts={};
+var i,s,a,k,v,args=fromFjson(sysprop("args_srcr") || "[]");
 var rx=/\s*-([^=]+)=([\s\S]+)\s*$/i;
 for (i=0;i<args.length;i++) {
     s=args[i];
     if (a=s.match(rx)) {
         k=a[1];v=a[2];
         if (k=="cfg") cfg=v;
-        else if (k=="out") pathOut=v;
-        else if (k=="tsc" && v=="false") console.log("WARNING: this environment does not provide a typescript compiler (tsc). do not reference non-javascript-compatible typescript references if you want your output to be valid javascript.");
-    } else if (s=="-run") {
-        doRun=true;
-    } else if (s=="-print") {
-        doPrint=true;
+        else if (k=="out") opts.outpath=v;
+    } else if (s.charAt(0)=="-") {
+        opts[s.substring(1)]=true;
     } else {
         pathsIn.push(s);
     }
-
 }
 
 // do the work
 var toSrc=createSrcr(cfg);
 for (i=0;i<pathsIn.length;i++) {
-    s=toSrc(pathsIn[i]);
-    if (doPrint) console.log(s)
-    if (doRun) (new Function(s)());
+    s=toSrc(pathsIn[i],opts);
+    if (opts.print) clog(s);
+    if (opts.run) (new Function(s)());
 }
 
 // exit
