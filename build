@@ -1,8 +1,0 @@
-#!/bin/bash
-mvn package clean
-exit
-JAVA_HOME_0=$JAVA_HOME
-export JAVA_HOME=jdk
-mvn/bin/mvn package clean
-export JAVA_HOME="$JAVA_HOME_0"
-exit
