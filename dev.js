@@ -6,154 +6,158 @@
     return;
 } catch(err) {}*/
 
-// VERSION 0.3.5
-var createSourcerer=(function(){
-    var System=java.lang.System;
-	var clog=function(x){console.log(x);return x;};
-	var clogO=function(x){console.log(toJson(x,null,4));return x;};
-	var now=Date.now;
-	var nanonow=System.nanoTime;
+var System=java.lang.System;
+var sysprop=System.getProperty;
+var clog=function(x){console.log(x);return x;};
+var clogO=function(x){console.log(toJson(x,null,4));return x;};
+var now=Date.now;
+var nanonow=System.nanoTime;
 
-	var fromJson=JSON.parse;
-	var toJson=JSON.stringify;
-	var fromFjson=function(s){
-		try {
-			var a,n;
-			while ((a=s.match(/^\s*(\/\/[\s\S]*?\n|\/\*[\s\S]*?\*\/)/)) && (n=a[0].length)) s=s.substring(n);
-			if (a=s.match(/^(\s*|\s*return\s*)[{["]/)) s="return "+s.substring(a[1].length) // }]"
-			else throw "errInvalidFjson";
-			return (new Function(s))();
-		} catch(err1) {
-			return;
-		}
+var fromJson=JSON.parse;
+var toJson=JSON.stringify;
+var fromFjson=function(s){
+    try {
+        var a,n;
+        while ((a=s.match(/^\s*(\/\/[\s\S]*?\n|\/\*[\s\S]*?\*\/)/)) && (n=a[0].length)) s=s.substring(n);
+        if (a=s.match(/^(\s*|\s*return\s*)[{["]/)) s="return "+s.substring(a[1].length) // }]"
+        else throw "errInvalidFjson";
+        return (new Function(s))();
+    } catch(err1) {
+        return;
     }
+}
 
-    var ByteArrayOutputStream=java.io.ByteArrayOutputStream;
-    var CommandLine=org.apache.commons.exec.CommandLine;
-    var DefaultExecutor=org.apache.commons.exec.DefaultExecutor;
-    var PumpStreamHandler=org.apache.commons.exec.PumpStreamHandler;
-    var ExecuteWatchdog=org.apache.commons.exec.ExecuteWatchdog;
-    var osexec=function(cmd,opts) {
-        var x;
-        if (typeof(cmd)==="object") {
-            opts=cmd;
-            cmd=opts.command;
-        } else if (!opts) {
-            opts={};
-        }
-        var exec=new DefaultExecutor();
-        var osOut=new ByteArrayOutputStream();
-        var osErr=new ByteArrayOutputStream();
-        exec.setStreamHandler(new PumpStreamHandler(osOut,osErr));
-        exec.setWatchdog(new ExecuteWatchdog(opts.timeout || 8000));
-        if (x=opts.exitvalue) exec.setExitValue(x);
-        var exitvalue=exec.execute(CommandLine.parse(cmd));
-        var sOut=osOut.toString(opts.charset || "UTF-8");
-        var sErr=osErr.toString(opts.charset || "UTF-8");
-        osOut.close();
-        osErr.close();
-        if (sOut) return sOut;
-        if (sErr) throw sErr;
-        return "";
+var ByteArrayOutputStream=java.io.ByteArrayOutputStream;
+var CommandLine=org.apache.commons.exec.CommandLine;
+var DefaultExecutor=org.apache.commons.exec.DefaultExecutor;
+var PumpStreamHandler=org.apache.commons.exec.PumpStreamHandler;
+var ExecuteWatchdog=org.apache.commons.exec.ExecuteWatchdog;
+var osexec=function(cmd,opts) {
+    var x;
+    if (typeof(cmd)==="object") {
+        opts=cmd;
+        cmd=opts.command;
+    } else if (!opts) {
+        opts={};
     }
+    var exec=new DefaultExecutor();
+    var osOut=new ByteArrayOutputStream();
+    var osErr=new ByteArrayOutputStream();
+    exec.setStreamHandler(new PumpStreamHandler(osOut,osErr));
+    exec.setWatchdog(new ExecuteWatchdog(opts.timeout || 8000));
+    if (x=opts.exitvalue) exec.setExitValue(x);
+    var exitvalue=exec.execute(CommandLine.parse(cmd));
+    var sOut=osOut.toString(opts.charset || "UTF-8");
+    var sErr=osErr.toString(opts.charset || "UTF-8");
+    osOut.close();
+    osErr.close();
+    if (sOut) return sOut;
+    if (sErr) throw sErr;
+    return "";
+}
 
-    var File=java.io.File;
-    var FileInputStream=java.io.FileInputStream;
-    var FileOutputStream=java.io.FileOutputStream;
-    var Scanner=java.util.Scanner;
-    var SEP_DIR=(System.getProperty("file.separator") || "/")
-    var hasFile=function(path){
-        return new File(path).isFile();
-    };
-    var getFile=function(path){
-        try {
-            var file=new File(path);
-            if (!file.isFile()) return "";
-            var is=new FileInputStream(file);
-            var s=new Scanner(is).useDelimiter("\\A").next();
-            is.close();
-            return s;
-            //return FS.readFileBlocking(path).toString("UTF-8");
-        } catch(err1) {
-            try { if (is) is.close(); } catch(err2) {}
-        }
-    };
-    var setFile=function(path,text){
-        var bytes=(text || "").getBytes("UTF-8");
-        var os=new FileOutputStream(path);
-        os.write(bytes,0,bytes.length);
-        os.close();
-        return path;
-    };
-    var removeFile=function(path){
-        try {
-            if ((new File(path))["delete"]()) return path;
-        } catch(err) {}
-        return "";
-    };
-
-    var URL=java.net.URL;
-    var getHttp=function(s){
-        try {
-            var url=new URL(s);
-            con=url.openConnection();
-            con.setRequestMethod("GET");
-            con.setConnectTimeout(4000);
-            con.setReadTimeout(16000);
-            //con.setFollowRedirects(true);
-            var is=con.getInputStream();
-            var s=new Scanner(is).useDelimiter("\\A").next();
-            var status=con.getResponseCode();
-            is.close();
-            con.disconnect();
-            if (status>=400) return "";
-            return s;
-        } catch(err1) {
-            try { if (is) is.close(); } catch(err2) {}
-            try { if (con) con.disconnect(); } catch(err2) {}
-        }
-    }
-
-    var x=new File(".sourcerer/jscache");
-    if (!x.isDirectory()) x.mkdirs();
-
-    var tsc=function(ts,target){
-        var s,k;
-        k=".sourcerer/jscache/"+toMd5(ts);
-        if (s=getFile(k+".js")) return s;
-        setFile(k+".ts",ts);
-        try {
-            osexec("tsc -t "+(target || "ES5")+" "+k+".ts");
-        } catch(err) {}
-        s=getFile(k+".js");
-        removeFile(k+".ts");
+var File=java.io.File;
+var FileInputStream=java.io.FileInputStream;
+var FileOutputStream=java.io.FileOutputStream;
+var Scanner=java.util.Scanner;
+var SEP_DIR=(System.getProperty("file.separator") || "/")
+var hasFile=function(path){
+    return new File(path).isFile();
+};
+var getFile=function(path){
+    try {
+        var file=new File(path);
+        if (!file.isFile()) return "";
+        var is=new FileInputStream(file);
+        var s=new Scanner(is).useDelimiter("\\A").next();
+        is.close();
         return s;
+        //return FS.readFileBlocking(path).toString("UTF-8");
+    } catch(err1) {
+        try { if (is) is.close(); } catch(err2) {}
     }
+};
+var setFile=function(path,text){
+    var bytes=(text || "").getBytes("UTF-8");
+    var os=new FileOutputStream(path);
+    os.write(bytes,0,bytes.length);
+    os.close();
+    return path;
+};
+var removeFile=function(path){
+    try {
+        if ((new File(path))["delete"]()) return path;
+    } catch(err) {}
+    return "";
+};
 
-    var rxTestVarname=/^[a-zA-Z$_][a-zA-Z0-9$_]*$/;
-    var isVarname=function(s){ return rxTestVarname.test(s); }
-    var rxTestUri=/^[a-zA-Z$_][a-zA-Z0-9$_]*:/;
-    var isUri=function(s){ return rxTestUri.test(s); }
-    var rxTestFileUri=/^file:/i;
-    var isFileUri=function(s){ return rxTestFileUri.test(s); }
-    var rxTestHttpUri=/^https?:/i;
-    var isHttpUri=function(s){ return rxTestHttpUri.test(s); }
-    var rxTestScriptPath=/\.(js|ts)$/i;
-    var rxTestDirPath=/[\/\\]$/i;
+var URL=java.net.URL;
+var getHttp=function(s){
+    try {
+        var url=new URL(s);
+        con=url.openConnection();
+        con.setRequestMethod("GET");
+        con.setConnectTimeout(4000);
+        con.setReadTimeout(16000);
+        //con.setFollowRedirects(true);
+        var is=con.getInputStream();
+        var s=new Scanner(is).useDelimiter("\\A").next();
+        var status=con.getResponseCode();
+        is.close();
+        con.disconnect();
+        if (status>=400) return "";
+        return s;
+    } catch(err1) {
+        try { if (is) is.close(); } catch(err2) {}
+        try { if (con) con.disconnect(); } catch(err2) {}
+    }
+}
 
-	var DigestUtils=org.apache.commons.codec.digest.DigestUtils;
-	var toMd5=DigestUtils.md5Hex
-	var toSha256=DigestUtils.sha256Hex;
-    var toSha512=DigestUtils.sha512Hex;
+var x=new File(".sourcerer/jscache");
+if (!x.isDirectory()) x.mkdirs();
 
+var tsc=function(ts,target){
+    var s,k;
+    k=".sourcerer/jscache/"+toMd5(ts);
+    if (s=getFile(k+".js")) return s;
+    setFile(k+".ts",ts);
+    try {
+        osexec("tsc -t "+(target || "ES5")+" "+k+".ts");
+    } catch(err) {}
+    s=getFile(k+".js");
+    removeFile(k+".ts");
+    return s;
+}
+
+var rxTestVarname=/^[a-zA-Z$_][a-zA-Z0-9$_]*$/;
+var isVarname=function(s){ return rxTestVarname.test(s); }
+var rxTestUri=/^[a-zA-Z$_][a-zA-Z0-9$_]*:/;
+var isUri=function(s){ return rxTestUri.test(s); }
+var rxTestFileUri=/^file:/i;
+var isFileUri=function(s){ return rxTestFileUri.test(s); }
+var rxTestHttpUri=/^https?:/i;
+var isHttpUri=function(s){ return rxTestHttpUri.test(s); }
+var rxTestScriptPath=/\.(js|ts)$/i;
+var rxTestDirPath=/[\/\\]$/i;
+var rxTestJavaReference=/^(((java|javax|com|net|org|io)\.|(commons)-)[^\/]+)\/([^\/]+)\/(\d+\.\d+[\s\S]*)$/i;
+
+var DigestUtils=org.apache.commons.codec.digest.DigestUtils;
+var toMd5=DigestUtils.md5Hex
+var toSha256=DigestUtils.sha256Hex;
+var toSha512=DigestUtils.sha512Hex;
+
+// VERSION 0.5.1
+var createSourcerer=(function(){
+    // ...
     return function(cfg){
+        var i,s,a,o,x;
         if (!cfg) cfg={};
         else if (typeof(cfg)==="string") cfg=(fromFjson(getFile(cfg) || cfg) || {});
 
         var sNames=(cfg.names || ["require","source"]).join("|");
-        var rxMatchValueMarker=new RegExp("([^a-zA-Z0-9$_.])("+sNames+")\\(\s*[\"']([^\"']+)[\"']\s*\\)","g");
+        var rxMatchValueMarker=new RegExp("(^|[^a-zA-Z0-9$_.])("+sNames+")\\(\s*[\"']([^\"']+)[\"']\s*\\)","g");
 
-        var i,dirs=(cfg.directories || cfg.dirs);
+        var dirs=(cfg.directories || cfg.dirs);
         if (dirs) {
             for (i=0;i<dirs.length;i++) {
                 if (dirs[i] && !rxTestDirPath.test(dirs[i])) dirs[i]+=SEP_DIR;
@@ -197,10 +201,11 @@ var createSourcerer=(function(){
                 clog("ERROR: cannot find the source '"+path+"'");
                 return "";
             }
-            var ref2src,ref,refs,srcs,src1,mtch,hash,hash1,hash2hash2hasref,warnings;
+            var ref2src,ref,refs,javarefs,srcs,src1,mtch,hash,hash1,hash2hash2hasref,warnings;
             ref2src={};
             ref2src[path]=src;
             refs=[path];
+            javarefs=[];
             srcs=[src];
             hash2hash2hasref={};
             warnings=[];
@@ -210,6 +215,11 @@ var createSourcerer=(function(){
                 hash1=toMd5(src1);
                 while (mtch=rxMatchValueMarker.exec(src1)) {
                     ref=mtch[3];
+                    if (rxTestJavaReference.test(ref)) {
+                        javarefs.push(ref);
+                        ref2src[ref]="return;";
+                        continue;
+                    }
                     s=ref2src[ref];
                     // TODO: the hashes should be cached in order to not have hash them over and over again
                     hash=toMd5(s);
@@ -289,8 +299,32 @@ var createSourcerer=(function(){
                 return arguments[1]+"f_"+ref2hash[arguments[3]]+"()";
             })
             src1=(tsc(src1,cfg.tsctarget) || src1);
-            clog("build time = "+((nanonow()-nt0)*1e-6).toFixed(3)+"ms");
-            setFile(path.replace(/\.(js|ts)/i,"")+"_src.js",src1);
+            var pathbase=path.replace(/\.(js|ts)/i,"");
+            setFile(pathbase+"_srcr.js",src1);
+            clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js'");
+
+            if (javarefs.length) {
+                var pom=getFile("pom.xml");
+                s="";
+                for (i=0;i<javarefs.length;i++) {
+                    a=javarefs[i].split("/");
+                    s+="\n<dependency>"
+                        +"<groupId>"+a[0]+"</groupId>"
+                        +"<artifactId>"+a[1]+"</artifactId>"
+                        +"<version>"+a[2]+"</version>"
+                    +"</dependency>";
+                }
+                pom=pom.replace("</dependencies>",s+"\n</dependencies>");
+                pom=pom.replace(/srcr.js/g,pathbase+"_srcr.js");
+                pom=pom.replace(/srcr.jar/g,pathbase+"_srcr.jar");
+                pom=pom.replace(/pom.xml/g,pathbase+"_srcr_pom.xml");
+                setFile(pathbase+"_srcr_pom.xml",pom);
+                clog("INFO: the pom file with all maven dependencies has been written to '"+pathbase+"_srcr_pom.xml'");
+                osexec("mvn package clean -f "+pathbase+"_srcr_pom.xml");
+                clog("INFO: the standalone application jar for running the script has been written to '"+pathbase+"_srcr.jar'. the application can be started with the command 'java -jar "+pathbase+"_srcr.jar'.");
+            }
+
+            clog("total execution time = "+((nanonow()-nt0)*1e-6).toFixed(3)+"ms");
             return src1;
         }
     }

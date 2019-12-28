@@ -42,7 +42,7 @@
                 <directory>${project.basedir}</directory>
                 <includes>
 					<include>pom.xml</include>
-					<include>sourcerer.js</include>
+					<include>srcr.js</include>
 					<include>srcr</include>
 					<include>cfg.js</include>
                 </includes>
@@ -64,7 +64,7 @@
                         <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                             <manifestEntries>
                                 <Main-Class>io.vertx.core.Launcher</Main-Class>
-                                <Main-Verticle>sourcerer.js</Main-Verticle>
+                                <Main-Verticle>srcr.js</Main-Verticle>
                             </manifestEntries>
                         </transformer>
                         <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
@@ -73,7 +73,7 @@
                     </transformers>
                     <artifactSet>
                     </artifactSet>
-                    <outputFile>sourcerer.jar</outputFile>
+                    <outputFile>srcr.jar</outputFile>
                 </configuration>
                 </execution>
             </executions>
@@ -92,7 +92,7 @@
                             <mainClass>io.vertx.core.Launcher</mainClass>
                             <arguments>
                                 <argument>run</argument>
-                                <argument>sourcerer.js</argument>
+                                <argument>srcr.js</argument>
                                 <argument>-cp</argument>
                                 <argument>${project.build.outputDirectory}</argument>
                             </arguments>
@@ -107,7 +107,7 @@
                         <executable>java</executable>
                         <arguments>
                             <argument>-jar</argument>
-                            <argument>sourcerer.jar</argument>
+                            <argument>srcr.jar</argument>
                         </arguments>
                         </configuration>
                     </execution>

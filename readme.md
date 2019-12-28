@@ -48,4 +48,4 @@ init("mylib")
 console.log(MYLIB.get("xyz"));
 ```
   
-To get a better idea about the inlining process, you can take a look at "test_src.js", which is a processed version of "test.js".
+To get a better idea of the inlining process, you can take a look at "test_src.js", which is a processed version of "test.js".
