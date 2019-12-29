@@ -10,7 +10,7 @@ try {
     }
 }
 
-// VERSION 0.6.5
+// VERSION 0.6.6
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
@@ -137,12 +137,21 @@ var getHttp=function(s){
     }
 }
 
-var x=new File(".srcr/jscache");
+var x=new File(".srcr/cache");
 if (!x.isDirectory()) x.mkdirs();
+var getCache=function(k){
+    return getFile(".srcr/cache/"+k);
+}
+var setCache=function(k,s){
+    return setFile(".srcr/cache/"+k,s);
+}
+var removeCache=function(k){
+    return removeFile(".srcr/cache/"+k);
+}
 
 var tsc=function(ts,target){
     var s,k;
-    k=".srcr/jscache/"+toMd5(ts);
+    k=".srcr/cache/tsc_"+toMd5(ts);
     if (s=getFile(k+".js")) return s;
     setFile(k+".ts",ts);
     try {
@@ -188,7 +197,12 @@ var createSrcr=(function(){
         } else dirs=[""];
         var getReferenceContent=function(path){
             var i,s,s1;
-            if (isHttpUri(path)) return getHttp(path);
+            if (isHttpUri(path)) {
+                s1=toMd5(path);
+                if (s=getCache(s1)) return s;
+                if (s=getHttp(path)) setCache(s1,s);
+                return s;
+            }
             path=path.replace(rxTestFileUri,"");
             for (i=0;i<dirs.length;i++) {
                 s=dirs[i]+path;
