@@ -10,7 +10,7 @@
     }
 }*/
 
-// VERSION 0.6.6
+// VERSION 0.6.7
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
@@ -179,6 +179,20 @@ var toMd5=DigestUtils.md5Hex
 var toSha256=DigestUtils.sha256Hex;
 var toSha512=DigestUtils.sha512Hex;
 
+// TODO: support all potential define/require syntaxes:
+/*
+    + module / module.exports / exports
+    define(...)
+    define([...],function...)
+    define("...",[...],function...)
+    define("...",...)
+    + require("...")
+    require("...",function...)
+    require([...],function...)
+    require("...").then(...)
+    require([...]).then(...)
+*/
+// TODO: add support for async requires ("_require") [?]
 var createSrcr=(function(){
     // ...
     return function(cfg){
@@ -298,9 +312,10 @@ var createSrcr=(function(){
             srcs=[
                 '// source-resolved version of "'+path+'" ['+toMd5(src)+']',
                 (warnings.length ? "// "+warnings.join("\n// ") : ""),
-                '(function(global){',
-                '   var __hash2value={};',
-                '   var f_undefined=function(){return;};'
+                'var MODULE=(typeof(module)==="undefined" ? {exports:{}} : module);',
+                '(function(global,module,exports){',
+                '   var __hash2value={};'
+                //'   var f_undefined=function(){return;};'
             ];
             ref2hash={};
             hash2ref={};
@@ -341,7 +356,8 @@ var createSrcr=(function(){
                 '',
                 '   // #########################################################',
                 '})(',
-                '   typeof(global)==="undefined" ? (typeof(window)==="undefined" ? (typeof(applicationScope)==="undefined" ? {} : applicationScope) : window) : global',
+                '   typeof(global)==="undefined" ? (typeof(window)==="undefined" ? (typeof(applicationScope)==="undefined" ? {} : applicationScope) : window) : global,',
+                '   MODULE,MODULE.exports',
                 ');'
             );
             src1=srcs.join("\n").replace(rxMatchValueMarker,function(){
