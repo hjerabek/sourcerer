@@ -1,8 +1,9 @@
 // this is used to simplify development by not having to re-build the jar every time
 /*try {
     var js=vertx.fileSystem().readFileBlocking("dev.js").toString("UTF-8");
-    (new Function(js))();
-    return;
+    var SRCR=(new Function(js))();
+    if (typeof(module)!=="undefined") module.exports=SRCR;
+    return SRCR;
 } catch(err) {
     if (js) {
         console.log(err.toString());
@@ -10,7 +11,9 @@
     }
 }*/
 
-// VERSION 0.6.7
+// VERSION 0.7.0
+
+var SRCR={};
 
 var System=java.lang.System;
 var sysprop=System.getProperty;
@@ -186,14 +189,14 @@ var toSha512=DigestUtils.sha512Hex;
     define([...],function...)
     define("...",[...],function...)
     define("...",...)
-    + require("...")
+    + require_("...")
     require("...",function...)
     require([...],function...)
-    require("...").then(...)
+    require_("...").then(...)
     require([...]).then(...)
 */
 // TODO: add support for async requires ("_require") [?]
-var createSrcr=(function(){
+var createSrcr=SRCR.create=(function(){
     // ...
     return function(cfg){
         var i,s,a,o,x;
@@ -374,7 +377,7 @@ var createSrcr=(function(){
             setFile(pathbase+"_srcr.js",src1);
             clog("INFO: the full script source has been transpiled and written to '"+pathbase+"_srcr.js' ["+(src1.length*1e-3).toFixed(0)+"kb].");
 
-            if (javarefs.length || opts.jar) {
+            if (opts.jar!==false && (javarefs.length || opts.jar)) {
                 var pom=getResource("pom.xml");
                 s="";
                 for (i=0;i<javarefs.length;i++) {
@@ -407,8 +410,8 @@ var createSrcr=(function(){
 
 // exit if this script is used like a module
 if (!sysprop("args_srcr")) {
-    if (typeof(module)!=="undefined") module.exports=createSrcr;
-    return createSrcr;
+    if (typeof(module)!=="undefined") module.exports=SRCR;
+    return SRCR;
 }
 
 // process arguments
@@ -427,6 +430,7 @@ for (i=0;i<args.length;i++) {
         pathsIn.push(s);
     }
 }
+System.clearProperty("args_srcr");
 
 // do the work
 var toSrc=createSrcr(cfg);
@@ -437,5 +441,6 @@ for (i=0;i<pathsIn.length;i++) {
 }
 
 // exit
+if (typeof(module)!=="undefined") module.exports=SRCR;
 if (!opts.run) vertx.close();
-return createSrcr;
+return SRCR;

@@ -45,7 +45,7 @@ To start your application, run
 java -jar example_app_srcr.jar
 ```
 
-## Commandline usage  
+## Command line usage  
 
 By default, you run the srcr just with a single file:
 ```bash
@@ -77,3 +77,32 @@ If you want to process multiple files serially, add multiple paths as arguments:
 ```bash
 ./srcr -cfg=cfg.js script1.js script2.js script3.js
 ```
+
+## Inline usage  
+
+Since the srcr is written in JavaScript, and always part of **srcr.jar**, its functionalities can directly be integrated into any source. As a showcase, take a look at **example_http.js**:
+
+```javascript
+var toSrc=require("srcr.js").create();
+
+var server=vertx.createHttpServer();
+var Router=require("vertx-web-js/router");
+var router=Router.router(vertx);
+router.route("/example_*").handler(function(rctx){
+  var ref=(rctx.normalisedPath() || "").substring(1);
+  var src=(ref ? toSrc(ref,{tsc:true,jar:false}) : "");
+  if (!src) src='console.log("[SRCR] cannot resolve reference \''+ref+'\'");';
+  rctx.response().putHeader("content-type","application/json; charset=UTF-8").end(src);
+});
+server.requestHandler(router.handle).listen(4380);
+
+console.log("\nSRCR HTTP server started.\nOpen, for example, 'http://localhost:4380/example_app' to see the full source of the example app...\n");
+```
+
+This creates a Vert.x HTTP server that allows to return the fully resolved source of each example in this project. Such a service can be used to, for example, deliver bundled sources to clients. To see the endpoint in action, run the file
+
+```bash
+./srcr example_http -run
+```
+
+and open http://localhost:4380/example_app in your browser.

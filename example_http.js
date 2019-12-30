@@ -1,10 +1,14 @@
-var server = vertx.createHttpServer();
-var Router = require("vertx-web-js/router");
-var router = Router.router(vertx);
-router.route().handler(function(rctx){
-  rctx.response().putHeader("content-type","text/plain").end("SRCR is reporting for duty...");
+var toSrc=require("srcr.js").create();
+
+var server=vertx.createHttpServer();
+var Router=require("vertx-web-js/router");
+var router=Router.router(vertx);
+router.route("/example_*").handler(function(rctx){
+  var ref=(rctx.normalisedPath() || "").substring(1);
+  var src=(ref ? toSrc(ref,{tsc:true,jar:false}) : "");
+  if (!src) src='console.log("[SRCR] cannot resolve reference \''+ref+'\'");';
+  rctx.response().putHeader("content-type","application/json; charset=UTF-8").end(src);
 });
 server.requestHandler(router.handle).listen(4380);
-var hndlrs0,lgr0=java.util.logging.Logger.getLogger("");
-if (lgr0 && (hndlrs0=lgr0.getHandlers()).length) lgr0.removeHandler(hndlrs0[0]);
-console.log("HTTP server started. Open 'http://localhost:4380' and see for yourself...")
+
+console.log("\nSRCR HTTP server started.\nOpen, for example, 'http://localhost:4380/example_app' to see the full source of the example app...\n");
