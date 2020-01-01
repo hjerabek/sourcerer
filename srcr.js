@@ -11,7 +11,7 @@ try {
     }
 }
 
-// VERSION 0.7.0
+// VERSION 0.7.2
 
 var SRCR={};
 
@@ -101,6 +101,94 @@ var removeFile=function(path){
     } catch(err) {}
     return "";
 };
+
+/*
+" = 34
+' = 39
+` = 96
+* = 42
+/ = 47
+\ = 92
+( = 40
+) = 41
+[ = 91
+] = 93
+{ = 123
+} = 125
+*/
+// TODO: test thoroughly
+var bracket2opening={")":"(","}":"{","]":"[",">":"<"};
+var getIndexOfJavascriptClosingBracket=function(s,s2,i0){
+    var i=(typeof(i0)==="number" ? i0 : s.indexOf(bracket2opening[s2]))+1;
+    var n=s.length;
+    var cc,cc0=bracket2opening[s2].charCodeAt(0),cc1,cc2=s2.charCodeAt(0),ccX=0;
+    var c=1;
+    while (i<n) {
+        cc1=s.charCodeAt(i);
+        if (ccX) {
+            if (cc1==ccX) {
+                ccX=0;
+            } else if (cc1==92) {
+                i++;
+            }
+        } else {
+            if (cc1==cc2) {
+                c--;
+                if (c<1) return i;
+            } else if (cc1==cc0) {
+                c++;
+            } else if (cc1==47) {
+                cc=s.charCodeAt(i+1);
+                if (cc==47) {
+                    i=s.indexOf("\n",i+2)+1;
+                    if (i<1) return -1;
+                } else if (cc==42) {
+                    i=s.indexOf("*"+"/",i+2)+2;
+                    if (i<2) return -1;
+                } else {
+                    ccX=cc1;    
+                }
+            //} else if (cc1==92) {
+            //    i++;
+            } else if (cc1==34 || cc1==39 || cc1==96) {
+                ccX=cc1;
+            }
+        }
+        i++;
+    }
+    return -1;
+}
+// TODO: test thoroughly
+var getCommentlessJavascript=function(s){
+    if (s.indexOf("//")<0 && s.indexOf("/*")<0) return s;
+    var i=0,i1,n=s.length,cc,cc1,ccX=0;
+    while (i<n) {
+        cc=s.charCodeAt(i);
+        if (ccX) {
+            if (cc==ccX) ccX=0;
+            else if (cc==92) i++;
+        } else if (cc==47) {
+            cc1=s.charCodeAt(i+1);
+            if (cc1==47) {
+                i1=s.indexOf("\n",i+2);
+                if (i1<0) return s.substring(0,i);
+                s=s.substring(0,i)+s.substring(i1);
+                n=s.length;
+            } else if (cc1==42) {
+                i1=s.indexOf("*"+"/",i+2);
+                if (i1<0) return s.substring(0,i);
+                s=s.substring(0,i)+s.substring(i1+2);
+                n=s.length;
+            } else {
+                ccX=cc;    
+            }
+        } else if (cc==34 || cc==39 || cc==96) {
+            ccX=cc;
+        }
+        i++;
+    }
+    return s;
+}
 
 var SystemClassLoader=java.lang.ClassLoader.getSystemClassLoader();
 var hasResource=function(path){
@@ -196,6 +284,7 @@ var toSha512=DigestUtils.sha512Hex;
     require([...]).then(...)
 */
 // TODO: add support for async requires ("_require") [?]
+// TODO: ignore commented requires
 var createSrcr=SRCR.create=(function(){
     // ...
     return function(cfg){
@@ -262,6 +351,7 @@ var createSrcr=SRCR.create=(function(){
                 clog("ERROR: cannot find the source '"+path+"'");
                 return "";
             }
+            src=getCommentlessJavascript(src);
             var ref2src,ref,refs,javarefs,srcs,src1,mtch,hash,hash1,hash2hash2hasref,warnings;
             ref2src={};
             ref2src[path]=src;
@@ -299,6 +389,7 @@ var createSrcr=SRCR.create=(function(){
                     */
                     if (s) continue;
                     s=getReferenceContent(ref);
+                    s=getCommentlessJavascript(s);
                     ref2src[ref]=(s || "return;");
                     if (s) {
                         refs.push(ref);
@@ -317,6 +408,7 @@ var createSrcr=SRCR.create=(function(){
                 (warnings.length ? "// "+warnings.join("\n// ") : ""),
                 'var MODULE=(typeof(module)==="undefined" ? {exports:{}} : module);',
                 '(function(global,module,exports){',
+                //'   var define=function(){};',
                 '   var __hash2value={};'
                 //'   var f_undefined=function(){return;};'
             ];
